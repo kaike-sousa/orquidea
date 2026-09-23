@@ -1,73 +1,92 @@
     "use client"
 
-    import Image from "next/image"
     import { useEffect, useState } from "react"
+    import { createClient } from "@/lib/supabase/client"
 
-    const banners = [
-    {
-        image: "/banners/banner-1.jpg",
-        eyebrow: "PERFUMES QUE TRANSFORMAM",
-        title: "Mais que fragrância, é bem-estar.",
-        description: "Descubra a essência que combina com cada momento.",
-    },
-    {
-        image: "/banners/banner-2.jpg",
-        eyebrow: "SUA CASA, SUA ESSÊNCIA",
-        title: "Aromas que deixam marcas.",
-        description: "Crie ambientes ainda mais acolhedores.",
-    },
-    {
-        image: "/banners/banner-3.jpg",
-        eyebrow: "UM TOQUE DE ELEGÂNCIA",
-        title: "Perfume cada detalhe.",
-        description: "Fragrâncias pensadas para transformar seus ambientes.",
-    },
-    ]
+    type Banner = {
+    id: string
+    image_url: string
+    link_url: string | null
+    device: "desktop" | "mobile"
+    sort_order: number
+    }
 
     export default function HeroCarousel() {
+    const [banners, setBanners] = useState<Banner[]>([])
     const [current, setCurrent] = useState(0)
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const timer = setInterval(
-        () => setCurrent((value) => (value + 1) % banners.length),
-        6000
-        )
-        return () => clearInterval(timer)
+        async function loadBanners() {
+        const supabase = createClient()
+
+        const { data, error } = await supabase
+            .from("site_banners")
+            .select("id, image_url, link_url, device, sort_order")
+            .eq("active", true)
+            .eq("device", "desktop")
+            .order("sort_order", { ascending: true })
+
+        if (error) {
+            console.error("Erro ao carregar banners:", error)
+            setLoading(false)
+            return
+        }
+
+        setBanners(data ?? [])
+        setLoading(false)
+        }
+
+        loadBanners()
     }, [])
+
+    useEffect(() => {
+        if (banners.length <= 1) return
+
+        const timer = setInterval(() => {
+        setCurrent((value) => (value + 1) % banners.length)
+        }, 6000)
+
+        return () => clearInterval(timer)
+    }, [banners.length])
+
+    if (loading || banners.length === 0) {
+        return null
+    }
 
     const banner = banners[current]
 
     return (
         <section className="hero">
-        <Image
-            src={banner.image}
-            alt={banner.title}
-            fill
-            priority
-            className="hero-image"
-        />
-
-        <div className="hero-overlay" />
-
-        <div className="hero-content">
-            <span>{banner.eyebrow}</span>
-            <h1>{banner.title}</h1>
-            <p>{banner.description}</p>
-
-            <a href="#produtos" className="primary-button">
-            VER PRODUTOS →
+        {banner.link_url ? (
+            <a href={banner.link_url} className="hero-link">
+            <img
+                src={banner.image_url}
+                alt=""
+                className="hero-image"
+            />
             </a>
-        </div>
+        ) : (
+            <img
+            src={banner.image_url}
+            alt=""
+            className="hero-image"
+            />
+        )}
 
-        <div className="carousel-dots">
-            {banners.map((_, index) => (
-            <button
-                key={index}
+        {banners.length > 1 && (
+            <div className="carousel-dots">
+            {banners.map((bannerItem, index) => (
+                <button
+                key={bannerItem.id}
+                type="button"
+                aria-label={`Ir para o banner ${index + 1}`}
                 onClick={() => setCurrent(index)}
                 className={index === current ? "active" : ""}
-            />
+                />
             ))}
-        </div>
+            </div>
+        )}
         </section>
     )
     }
