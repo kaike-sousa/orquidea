@@ -29,7 +29,7 @@
     category_id: string | null
     categories?: {
         name: string
-    } | null
+    }[] | null
     }
 
     const supabase = createClient()
@@ -906,7 +906,7 @@
                             <strong>{product.name}</strong>
 
                             <span>
-                            {product.categories?.name ||
+                                {product.categories?.[0]?.name ||
                                 "Sem categoria"}
                             </span>
 
